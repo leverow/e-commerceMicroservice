@@ -1,39 +1,45 @@
 ﻿using ECommerce.Api.Product.Context;
 using ECommerce.Api.Product.Entities;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ECommerce.Api.Product.Services;
 
-public class ProductService
+public class ProductService : IProductService
 {
-    private ECommerceDbContext _context;
+    private readonly ECommerceDbContext _dbContext;
 
-    public ProductService(ECommerceDbContext context)
-	{
-		_context = context;
-	}
-
-    public async Task<List<Entities.Product>> GetProducts()
+    public ProductService(ECommerceDbContext dbContext)
     {
-        var products = await (await _context.Products.FindAsync(products => true)).ToListAsync();
-
-        return products;
-    }
-    public async Task<Entities.Product> GetProductById()
-    {
-        var products = await (await _context.Products.FindAsync(products => true)).ToListAsync();
-
-        return products;
+        _dbContext = dbContext;
     }
 
-    public async Task<Entities.Product?> CreateProduct(Entities.Product product)
-	{
-		if (product is null)
-			return product;
+    public async Task<IEnumerable<Entities.Product>> GetAllProducts()
+    {
+        return await _dbContext.Products.Find(new BsonDocument()).ToListAsync();
+    }
 
-        await _context.Products.InsertOneAsync(product);
+    public async Task<Entities.Product> GetProductById(ObjectId id)
+    {
+        var filter = Builders<Entities.Product>.Filter.Eq(p => p.Id, id);
+        return await _dbContext.Products.Find(filter).FirstOrDefaultAsync();
+    }
 
-		return product;
+    public async Task<Entities.Product> CreateProduct(Entities.Product product)
+    {
+        await _dbContext.Products.InsertOneAsync(product);
+        return product;
+    }
+
+    public async Task<Entities.Product> UpdateProduct(ObjectId id, Entities.Product product)
+    {
+        var filter = Builders<Entities.Product>.Filter.Eq(p => p.Id, id);
+        await _dbContext.Products.ReplaceOneAsync(filter, product);
+        return product;
+    }
+    public async Task DeleteProduct(ObjectId id)
+    {
+        var filter = Builders<Entities.Product>.Filter.Eq(p => p.Id, id);
+        await _dbContext.Products.DeleteOneAsync(filter);
     }
 }
-
