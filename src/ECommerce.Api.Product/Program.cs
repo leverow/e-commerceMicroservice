@@ -1,8 +1,12 @@
+using ECommerce.Api.Product.Context;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddScoped<ECommerceDbContext>();
 
 var app = builder.Build();
 
