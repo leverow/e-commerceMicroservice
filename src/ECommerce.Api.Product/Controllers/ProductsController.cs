@@ -1,9 +1,11 @@
-﻿using ECommerce.Api.Product.Dtos;
+﻿using System.Text;
+using ECommerce.Api.Product.Dtos;
 using ECommerce.Api.Product.Services;
 using Mapster;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
+using RabbitMQ.Client;
 
 namespace ECommerce.Api.Product.Controllers;
 
@@ -41,6 +43,9 @@ public class ProductsController : ControllerBase
         var product = productDto.Adapt<Entities.Product>(); 
 
         await _service.CreateProduct(product);
+
+        SendAddedProductMessage(product);
+        
         return CreatedAtAction("GetProductById", new { id = product.Id }, product);
     }
 
@@ -71,4 +76,29 @@ public class ProductsController : ControllerBase
         await _service.DeleteProduct(id);
         return Ok();
     }
+
+    private void SendAddedProductMessage(Entities.Product product) 
+    {
+        var factory = new ConnectionFactory
+        {
+            HostName = "localhost",
+            UserName = "guest",
+            Password = "guest",
+            Port = 5672
+        };
+
+        var connection = factory.CreateConnection();
+        var channel = connection.CreateModel();
+
+        channel.ExchangeDeclare("product_added", ExchangeType.Fanout);
+
+        var productJson = Newtonsoft.Json.JsonConvert.SerializeObject(product);
+        var productJsonByte = Encoding.UTF8.GetBytes(productJson);
+
+        channel.BasicPublish("product_added", "", null, productJsonByte);
+
+        channel.Close();
+        connection.Close();
+    }
+
 }
