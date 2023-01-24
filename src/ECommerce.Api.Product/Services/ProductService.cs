@@ -19,7 +19,7 @@ public class ProductService : IProductService
         return await _dbContext.Products.Find(new BsonDocument()).ToListAsync();
     }
 
-    public async Task<Entities.Product> GetProductById(ObjectId id)
+    public async Task<Entities.Product> GetProductById(string id)
     {
         var filter = Builders<Entities.Product>.Filter.Eq(p => p.Id, id);
         return await _dbContext.Products.Find(filter).FirstOrDefaultAsync();
@@ -31,13 +31,13 @@ public class ProductService : IProductService
         return product;
     }
 
-    public async Task<Entities.Product> UpdateProduct(ObjectId id, Entities.Product product)
+    public async Task<Entities.Product> UpdateProduct(string id, Entities.Product product)
     {
         var filter = Builders<Entities.Product>.Filter.Eq(p => p.Id, id);
         await _dbContext.Products.ReplaceOneAsync(filter, product);
         return product;
     }
-    public async Task DeleteProduct(ObjectId id)
+    public async Task DeleteProduct(string id)
     {
         var filter = Builders<Entities.Product>.Filter.Eq(p => p.Id, id);
         await _dbContext.Products.DeleteOneAsync(filter);
