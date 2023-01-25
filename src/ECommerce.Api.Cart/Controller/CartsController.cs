@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using ECommerce.Api.Cart.Dtos;
+using ECommerce.Api.Cart.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
-using Newtonsoft.Json;
 
 namespace ECommerce.Api.Cart.Controller;
 
@@ -9,42 +9,51 @@ namespace ECommerce.Api.Cart.Controller;
 [ApiController]
 public class CartsController : ControllerBase
 {
+    private readonly ICartService _cartService;
     private readonly IDistributedCache _distributedCache;
 
-    public CartsController(IDistributedCache distributedCache)
+    public CartsController(IDistributedCache distributedCache, ICartService cartService)
     {
         _distributedCache = distributedCache;
+        _cartService = cartService;
     }
 
     [HttpPost]
-    public async Task<IActionResult> AddProduct(string key, string value)
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> AddProduct(string key, CreateProductDto createProductDto)
     {
-        var valuesJson = await _distributedCache.GetStringAsync(key);
-        var values = new List<string>();
-
-        if (valuesJson is not null)
-            values = JsonConvert.DeserializeObject<List<string>>(valuesJson);
-
-        values!.Add(value);
-
-        await _distributedCache.SetStringAsync(key, JsonConvert.SerializeObject(values), new DistributedCacheEntryOptions()
-        {
-            SlidingExpiration = TimeSpan.FromDays(10)
-        });
-
-        return Ok();
+        var productcart = await _cartService.AddCart(key, createProductDto);
+        return Ok(productcart);
     }
 
     [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<Entities.Cart>))]
     public async Task<IActionResult> GetCart(string key)
     {
-        var valuesJson = await _distributedCache.GetStringAsync(key);
+        var products = await _cartService.GetCart(key);
 
-        if (valuesJson is null)
-            return Ok(new List<string>());
+        return Ok(products ?? new List<Entities.Cart>());
+    }
 
-        var values = JsonConvert.DeserializeObject<List<string>>(valuesJson);
+    [HttpPut]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateProduct(string key, UpdateProductDto updateProductDto)
+    {
+        var productcarts = await _cartService.UpdateCart(key, updateProductDto);
 
-        return Ok(values);
+        return Ok(productcarts);
+    }
+
+    [HttpDelete]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Entities.Cart))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteProduct(string key, string cartId)
+    {
+        var productCart = await _cartService.DeleteCart(key, cartId);
+        if (productCart is null)
+            return BadRequest();
+
+        return Ok();
     }
 }

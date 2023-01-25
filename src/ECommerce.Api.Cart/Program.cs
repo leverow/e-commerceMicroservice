@@ -1,3 +1,5 @@
+using ECommerce.Api.Cart.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -9,6 +11,8 @@ builder.Services.AddDistributedRedisCache(options =>
     options.Configuration = "redis";
     options.InstanceName = "cart_api";
 });
+
+builder.Services.AddScoped<ICartService, CartService>();
 
 var app = builder.Build();
 

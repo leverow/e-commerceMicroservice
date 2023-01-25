@@ -5,7 +5,7 @@ services:
     image: ecommercecart
     container_name: ecommercecart
     ports:
-      - "1011:80"
+      - "5011:80"
     build:
       context: src/ECommerce.Api.Cart
       dockerfile: Dockerfile
