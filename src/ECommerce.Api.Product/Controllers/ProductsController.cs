@@ -14,6 +14,9 @@ namespace ECommerce.Api.Product.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _service;
+    private static string _product_added = "product_added";
+    private static string _product_updated = "product_updated";
+    private static string _product_deleted = "product_deleted";
 
     public ProductsController(IProductService service)
     {
@@ -44,7 +47,7 @@ public class ProductsController : ControllerBase
 
         await _service.CreateProduct(product);
 
-        SendAddedProductMessage(product);
+        SendMessage(product, _product_added);
 
         return CreatedAtAction("GetProductById", new { id = product.Id }, product);
     }
@@ -68,21 +71,24 @@ public class ProductsController : ControllerBase
 
         await _service.UpdateProduct(id, product);
 
-        SendUpdatedProductMessage(product);
+        SendMessage(product,_product_updated);
         return Ok(productDto);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProduct(string id)
     {
+        var product = await _service.GetProductById(id);
+
         await _service.DeleteProduct(id);
 
-        SendDeletedProductMessage(id);
+        SendMessage(product, _product_deleted );
         return Ok();
     }
 
-    private void SendAddedProductMessage(Entities.Product product)
+    public void SendMessage(Entities.Product product, string message)
     {
+
         var factory = new ConnectionFactory
         {
             HostName = "localhost",
@@ -94,60 +100,17 @@ public class ProductsController : ControllerBase
         var connection = factory.CreateConnection();
         var channel = connection.CreateModel();
 
-        channel.ExchangeDeclare("product_added", ExchangeType.Fanout);
+
+        channel.ExchangeDeclare(message, ExchangeType.Fanout);
 
         var productJson = Newtonsoft.Json.JsonConvert.SerializeObject(product);
         var productJsonByte = Encoding.UTF8.GetBytes(productJson);
 
-        channel.BasicPublish("product_added", "", null, productJsonByte);
-
-        channel.Close();
-        connection.Close();
-    }
-    private void SendUpdatedProductMessage(Entities.Product product)
-    {
-        var factory = new ConnectionFactory
-        {
-            HostName = "localhost",
-            UserName = "guest",
-            Password = "guest",
-            Port = 5672
-        };
-
-        var connection = factory.CreateConnection();
-        var channel = connection.CreateModel();
-
-        channel.ExchangeDeclare("product_updated", ExchangeType.Fanout);
-
-        var productJson = Newtonsoft.Json.JsonConvert.SerializeObject(product);
-        var productJsonByte = Encoding.UTF8.GetBytes(productJson);
-
-        channel.BasicPublish("product_updated", "", null, productJsonByte);
-
-        channel.Close();
-        connection.Close();
+        channel.BasicPublish(message, "", null, productJsonByte);
+        
+        if (!channel.IsOpen) channel.Close();
+        if (connection.IsOpen) connection.Close();
     }
 
-    private void SendDeletedProductMessage(string id)
-    {
-        var factory = new ConnectionFactory
-        {
-            HostName = "localhost",
-            UserName = "guest",
-            Password = "guest",
-            Port = 5672
-        };
 
-        var connection = factory.CreateConnection();
-        var channel = connection.CreateModel();
-
-        channel.ExchangeDeclare("product_deleted", ExchangeType.Fanout);
-
-        var productJsonByte = Encoding.UTF8.GetBytes(id);
-
-        channel.BasicPublish("product_deleted", "", null, productJsonByte);
-
-        channel.Close();
-        connection.Close();
-    }
 }
