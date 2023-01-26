@@ -71,7 +71,7 @@ public class ProductsController : ControllerBase
 
         await _service.UpdateProduct(id, product);
 
-        SendMessage(product,_product_updated);
+        SendMessage(product, _product_updated);
         return Ok(productDto);
     }
 
@@ -82,13 +82,12 @@ public class ProductsController : ControllerBase
 
         await _service.DeleteProduct(id);
 
-        SendMessage(product, _product_deleted );
+        SendMessage(product, _product_deleted);
         return Ok();
     }
 
-    public void SendMessage(Entities.Product product, string message)
+    private void SendMessage(Entities.Product product, string message)
     {
-
         var factory = new ConnectionFactory
         {
             HostName = "localhost",
@@ -107,10 +106,8 @@ public class ProductsController : ControllerBase
         var productJsonByte = Encoding.UTF8.GetBytes(productJson);
 
         channel.BasicPublish(message, "", null, productJsonByte);
-        
+
         if (!channel.IsOpen) channel.Close();
         if (connection.IsOpen) connection.Close();
     }
-
-
 }

@@ -1,4 +1,5 @@
 using ECommerce.Api.Dashboard.Data;
+using ECommerce.Api.Dashboard.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddHostedService<MessageService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
