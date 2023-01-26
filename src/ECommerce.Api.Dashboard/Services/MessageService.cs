@@ -1,4 +1,5 @@
 ﻿using ECommerce.Api.Dashboard.Data;
+using ECommerce.Api.Dashboard.Dtos;
 using ECommerce.Api.Dashboard.Entities;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
@@ -38,6 +39,7 @@ public class MessageService : BackgroundService
         _connection = factory.CreateConnection();
         _channel = _connection.CreateModel();
 
+  
         _channel.ExchangeDeclare("product_added", ExchangeType.Fanout);
         _queueName = _channel.QueueDeclare().QueueName;
 
@@ -51,17 +53,28 @@ public class MessageService : BackgroundService
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.Received += async (sender, args) =>
         {
+          //  args.RoutingKey
             var productJson = Encoding.UTF8.GetString(args.Body.ToArray());
-            var product = Newtonsoft.Json.JsonConvert.DeserializeObject<Product>(productJson);
+            var product = Newtonsoft.Json.JsonConvert.DeserializeObject<ProductQueue>(productJson);
             await SaveProductAsync(product);
         };
 
         _channel.BasicConsume(_queueName, false, consumer);
     }
 
-    private async Task SaveProductAsync(Product productModel)
+    private async Task SaveProductAsync(ProductQueue productModel)
     {
-        var product = productModel.Adapt<Product>();
+        var product = new Product()
+        {
+            ProductId = productModel.Id,
+            ProductName = productModel.Name,
+            ProductDescription = productModel.Description,
+            ProductPrice = productModel.Price,
+            ProductCount = productModel.Count,
+            ProductImageUrl = productModel.ImageUrl,
+            ProductBrand = productModel.Brand.Name,
+            ProductCategory = productModel.Category.Name
+        };
 
         _context.Products?.Add(product);
         await _context.SaveChangesAsync();
