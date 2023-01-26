@@ -3,6 +3,7 @@ using ECommerce.Api.Dashboard.Dtos;
 using ECommerce.Api.Dashboard.Entities;
 using Mapster;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
@@ -16,7 +17,7 @@ public class MessageService : BackgroundService
     private AppDbContext _context;
     private IConnection _connection;
     private IModel _channel;
-    private string _queueName;
+    //private string _queueName;
 
     public MessageService(IServiceScopeFactory scopeFactory )
     {
@@ -41,25 +42,46 @@ public class MessageService : BackgroundService
 
   
         _channel.ExchangeDeclare("product_added", ExchangeType.Fanout);
-        _queueName = _channel.QueueDeclare().QueueName;
+        var _queueName = _channel.QueueDeclare().QueueName;
+        _channel.QueueBind(_queueName, "product_added","");
+        HandleQueue(_queueName);
 
-        _channel.QueueBind(_queueName, "product_added", "");
+        _channel.ExchangeDeclare("product_updated", ExchangeType.Fanout);
+        var queueName2 = _channel.QueueDeclare().QueueName;
+        _channel.QueueBind(queueName2, "product_updated", "");
+        HandleQueue(queueName2);
 
-        HandleQueue();
+        _channel.ExchangeDeclare("product_deleted", ExchangeType.Fanout);
+        var queueName3 = _channel.QueueDeclare().QueueName;
+        _channel.QueueBind(queueName3, "product_deleted", "");
+
+        HandleQueue(queueName3);
 
     }
-    private void HandleQueue()
+    private void HandleQueue(string queueName)
     {
         var consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.Received += async (sender, args) =>
         {
-          //  args.RoutingKey
+            var exchangeName = args.RoutingKey;
             var productJson = Encoding.UTF8.GetString(args.Body.ToArray());
             var product = Newtonsoft.Json.JsonConvert.DeserializeObject<ProductQueue>(productJson);
-            await SaveProductAsync(product);
+
+            if(exchangeName == "product_added")
+            {
+                await SaveProductAsync(product);
+            }
+            else if (exchangeName == "product_updated")
+            {
+                await UpdateProductAsync(product);
+            }
+            else if (exchangeName == "product_deleted")
+            {
+                await DeleteProductAsync(product);
+            }
         };
 
-        _channel.BasicConsume(_queueName, false, consumer);
+        _channel.BasicConsume(queueName, false, consumer);
     }
 
     private async Task SaveProductAsync(ProductQueue productModel)
@@ -78,8 +100,31 @@ public class MessageService : BackgroundService
 
         _context.Products?.Add(product);
         await _context.SaveChangesAsync();
+    }
 
-       // await _hubContext.Clients.All.SendAsync("ProductAdded", product);
+    private async Task UpdateProductAsync(ProductQueue productModel)
+    {
+        var product = await _context.Products.FirstOrDefaultAsync(p => p.ProductId == productModel.Id);
+
+        product.ProductId = productModel.Id;
+        product.ProductName = productModel.Name;
+        product.ProductDescription = productModel.Description;
+        product.ProductPrice = productModel.Price;
+        product.ProductCount = productModel.Count;
+        product.ProductImageUrl = productModel.ImageUrl;
+        product.ProductBrand = productModel.Brand.Name;
+        product.ProductCategory = productModel.Category.Name;
+      
+        _context.Products?.Update(product);
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task DeleteProductAsync(ProductQueue productModel)
+    {
+        var product = await _context.Products.FirstOrDefaultAsync(p => p.ProductId == productModel.Id);
+
+        _context.Products?.Remove(product);
+        await _context.SaveChangesAsync();
     }
 
 }

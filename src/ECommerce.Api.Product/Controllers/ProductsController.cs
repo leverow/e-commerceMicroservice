@@ -105,7 +105,7 @@ public class ProductsController : ControllerBase
         var productJson = Newtonsoft.Json.JsonConvert.SerializeObject(product);
         var productJsonByte = Encoding.UTF8.GetBytes(productJson);
 
-        channel.BasicPublish(message, "", null, productJsonByte);
+        channel.BasicPublish(message, message, null, productJsonByte);
 
         if (!channel.IsOpen) channel.Close();
         if (connection.IsOpen) connection.Close();
