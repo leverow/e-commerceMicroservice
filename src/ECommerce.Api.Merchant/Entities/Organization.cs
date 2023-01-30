@@ -1,4 +1,6 @@
-﻿namespace ECommerce.Api.Merchant.Entities;
+﻿using ECommerce.Api.Merchant.Entities.Enums;
+
+namespace ECommerce.Api.Merchant.Entities;
 
 public class Organization
 {
